@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Antrian') — RS Sehat</title>
+    <title>@yield('title', 'Antrian') — RS Sehat Sentosa</title>
 
     {{-- Fonts --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -277,13 +277,34 @@
         <a href="/kiosk" class="topbar-brand">
             <div class="topbar-brand-icon"><i class="bi bi-hospital-fill"></i></div>
             <div>
-                <div class="topbar-brand-text">RS Sehat</div>
+                <div class="topbar-brand-text">RS Sehat Sentosa</div>
                 <div class="topbar-brand-sub">Sistem Antrian Digital</div>
             </div>
         </a>
         <div class="topbar-role">
             @yield('nav-extra')
             <div class="role-chip"><i class="bi bi-@yield('role-icon', 'grid')"></i> @yield('role-label', 'Dashboard')</div>
+
+            @auth
+                <div style="display:flex;align-items:center;gap:.5rem;margin-left:.5rem;">
+                    <div style="font-size:.78rem;color:var(--c-muted);font-weight:600;line-height:1.2;text-align:right;">
+                        <div style="color:var(--c-text);font-weight:700;">{{ Auth::user()->name }}</div>
+                        <div>{{ Auth::user()->isAdmin() ? 'Administrator' : 'Operator' }}</div>
+                    </div>
+                    <form method="POST" action="{{ route('logout') }}" style="margin:0;">
+                        @csrf
+                        <button type="submit" title="Keluar"
+                            style="background:var(--c-red-soft);color:var(--c-red);border:1px solid rgba(255,59,92,.2);
+                           border-radius:8px;padding:6px 10px;cursor:pointer;font-size:.82rem;
+                           font-weight:700;display:flex;align-items:center;gap:.3rem;
+                           transition:background .15s;"
+                            onmouseover="this.style.background='var(--c-red)';this.style.color='#fff'"
+                            onmouseout="this.style.background='var(--c-red-soft)';this.style.color='var(--c-red)'">
+                            <i class="bi bi-box-arrow-right"></i> Keluar
+                        </button>
+                    </form>
+                </div>
+            @endauth
         </div>
     </nav>
 

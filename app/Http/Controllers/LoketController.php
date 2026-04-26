@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\QueueService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 
 class LoketController extends Controller
 {
@@ -17,7 +18,9 @@ class LoketController extends Controller
         abort_unless(in_array($loketId, [1, 2, 3]), 404);
 
         $loketInfo = \App\Models\Queue::loketInfo($loketId);
-        return view('loket.index', compact('loketId', 'loketInfo'));
+        $user      = Auth::user();
+
+        return view('loket.index', compact('loketId', 'loketInfo', 'user'));
     }
 
     /**

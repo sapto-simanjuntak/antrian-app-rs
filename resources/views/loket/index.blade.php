@@ -393,15 +393,26 @@
 
         {{-- Loket Nav --}}
         <div class="loket-nav">
-            <a href="/loket/1" class="lnav-pill {{ $loketId == 1 ? 'active' : '' }}">
-                <i class="bi bi-shield-check-fill"></i> Loket 1 — BPJS
-            </a>
-            <a href="/loket/2" class="lnav-pill {{ $loketId == 2 ? 'active' : '' }}">
-                <i class="bi bi-person-badge-fill"></i> Loket 2 — Umum
-            </a>
-            <a href="/loket/3" class="lnav-pill {{ $loketId == 3 ? 'active' : '' }}">
-                <i class="bi bi-person-hearts"></i> Loket 3 — Lansia
-            </a>
+            @if ($user->isAdmin())
+                <a href="/loket/1" class="lnav-pill {{ $loketId == 1 ? 'active' : '' }}">
+                    <i class="bi bi-shield-check-fill"></i> Loket 1 — BPJS
+                </a>
+                <a href="/loket/2" class="lnav-pill {{ $loketId == 2 ? 'active' : '' }}">
+                    <i class="bi bi-person-badge-fill"></i> Loket 2 — Umum
+                </a>
+                <a href="/loket/3" class="lnav-pill {{ $loketId == 3 ? 'active' : '' }}">
+                    <i class="bi bi-person-hearts"></i> Loket 3 — Lansia
+                </a>
+            @else
+                <span class="lnav-pill active">
+                    @if ($loketId == 1)
+                        <i class="bi bi-shield-check-fill"></i> Loket 1 — BPJS
+                    @elseif($loketId == 2)
+                        <i class="bi bi-person-badge-fill"></i> Loket 2 — Umum
+                    @else<i class="bi bi-person-hearts"></i> Loket 3 — Lansia
+                    @endif
+                </span>
+            @endif
             <a href="/display" class="lnav-pill tv-link">
                 <i class="bi bi-tv-fill"></i> Display TV
             </a>
