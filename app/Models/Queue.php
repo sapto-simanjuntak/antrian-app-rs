@@ -93,6 +93,7 @@ class Queue extends Model
                 'paused'    => 'Ditunda',
                 'done'      => 'Selesai',
                 'cancelled' => 'Batal',
+                'no_show'   => 'Tidak Hadir',
                 default     => ucfirst($this->status),
             }
         );

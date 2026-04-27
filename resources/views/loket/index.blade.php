@@ -250,6 +250,11 @@
             color: #fff;
         }
 
+        .abt-noshow {
+            background: #64748b;
+            color: #fff;
+        }
+
         /* loading state for buttons */
         .abt.loading::after {
             content: '';
@@ -456,6 +461,9 @@
                     <button class="abt abt-batal" id="btn-batal" onclick="doAction('batal')" disabled>
                         <i class="bi bi-x-circle-fill"></i>Batal
                     </button>
+                    <button class="abt abt-noshow" id="btn-tidak-hadir" onclick="doAction('tidak-hadir')" disabled>
+                        <i class="bi bi-person-x-fill"></i>Tidak Hadir
+                    </button>
                 </div>
 
                 {{-- Stats --}}
@@ -593,9 +601,10 @@
             setBtn('ulang', isActive);
             // Pause: aktif kalau status calling (sedang dilayani)
             setBtn('pause', a?.status === 'calling');
-            // Selesai & Batal: aktif kalau ada antrian aktif
+            // Selesai, Batal, Tidak Hadir: aktif kalau ada antrian aktif
             setBtn('selesai', isActive);
             setBtn('batal', isActive);
+            setBtn('tidak-hadir', isActive);
         }
 
         function setBtn(id, enabled) {

@@ -58,7 +58,7 @@ class AuthController extends Controller
     private function redirectAfterLogin($user)
     {
         if ($user->isAdmin()) {
-            return redirect()->route('loket.index', 1);
+            return redirect()->route('admin.dashboard');
         }
 
         return redirect()->route('loket.index', $user->loket_id ?? 1);

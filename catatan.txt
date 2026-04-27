@@ -1,0 +1,21 @@
+# 1. Di file .env client — WAJIB ubah sebelum launch
+APP_ENV=production        # sekarang masih: local
+APP_DEBUG=false           # sekarang masih: true  ← BAHAYA jika dibiarkan
+APP_URL=https://domain-rs.com
+
+HOSPITAL_NAME="RS Sejahtera Medika"
+HOSPITAL_NAME_FULL="RUMAH SAKIT SEJAHTERA MEDIKA"
+HOSPITAL_ADDRESS="Jl. Sudirman No. 10, Jakarta Selatan"
+HOSPITAL_PHONE="(021) 8888-9999"
+HOSPITAL_WA="0811-2222-3333"
+HOSPITAL_HOURS="Senin – Jumat 07:00 – 20:00 WIB"
+
+# 2. Jalankan setelah deploy
+php artisan migrate
+php artisan db:seed --class=UserSeeder
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+
+APP_DEBUG=true di production = semua error + database credentials bisa terlihat oleh pengguna umum. Ini satu-satunya hal yang masih berbahaya jika kelewatan.

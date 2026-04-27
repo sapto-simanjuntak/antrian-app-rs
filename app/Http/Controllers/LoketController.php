@@ -71,6 +71,14 @@ class LoketController extends Controller
         return $this->respond($this->queueService->batal($loketId));
     }
 
+    /**
+     * POST: Tandai pasien tidak hadir (no-show).
+     */
+    public function tidakHadir(int $loketId): JsonResponse
+    {
+        return $this->respond($this->queueService->tidakHadir($loketId));
+    }
+
     // ── Helper ────────────────────────────────────────────────────────────────
 
     private function respond(array $result): JsonResponse

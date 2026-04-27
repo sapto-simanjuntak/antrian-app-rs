@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Operator — RS Sehat Sentosa</title>
+    <title>Login Operator — {{ config('hospital.name') }}</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
@@ -474,7 +474,7 @@
         {{-- ── Left: Branding ── --}}
         <div class="login-left">
             <div class="brand-logo"><i class="bi bi-hospital-fill"></i></div>
-            <div class="brand-name">RS Sehat Sentosa</div>
+            <div class="brand-name">{{ config('hospital.name') }}</div>
             <div class="brand-tagline">Melayani dengan Hati dan Profesional</div>
 
             <div class="brand-cards">
@@ -536,7 +536,7 @@
                             <i class="bi bi-envelope-fill finput-icon"></i>
                             <input type="email" id="email" name="email"
                                 class="finput {{ $errors->has('email') ? 'is-invalid' : '' }}"
-                                value="{{ old('email') }}" placeholder="operator@rssehat.com" autocomplete="email"
+                                value="{{ old('email') }}" placeholder="operator@{{ config('hospital.email') }}" autocomplete="email"
                                 autofocus required>
                         </div>
                         @error('email')
@@ -592,7 +592,7 @@
                 </div>
 
                 <div class="login-footer">
-                    &copy; {{ date('Y') }} RS Sehat Sentosa — Sistem Antrian Digital
+                    &copy; {{ date('Y') }} {{ config('hospital.name') }} — Sistem Antrian Digital
                 </div>
             </div>
         </div>

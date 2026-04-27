@@ -467,6 +467,75 @@
         .btn-receipt-close:hover {
             filter: brightness(1.08);
         }
+
+        .btn-receipt-print {
+            width: 100%;
+            padding: .75rem;
+            background: var(--c-surface);
+            color: var(--c-text);
+            font-family: var(--font);
+            font-weight: 700;
+            font-size: .9rem;
+            border: 2px solid var(--c-border);
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .5rem;
+            transition: all .15s;
+            margin-bottom: .6rem;
+        }
+
+        .btn-receipt-print:hover {
+            border-color: var(--c-primary);
+            color: var(--c-primary);
+            background: var(--c-primary-soft);
+        }
+
+        /* ── Print layout — thermal 80mm ── */
+        @media print {
+            /* Sembunyikan semua kecuali konten receipt */
+            body * { visibility: hidden; }
+            #receiptBox, #receiptBox * { visibility: visible; }
+
+            #receiptBox {
+                position: fixed !important;
+                inset: 0 !important;
+                margin: 0 auto !important;
+                width: 80mm !important;
+                max-width: 80mm !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+                overflow: visible !important;
+            }
+
+            /* Thermal: hapus gradien, cetak hitam-putih */
+            .receipt-head {
+                background: #fff !important;
+                color: #000 !important;
+                border-bottom: 2px dashed #000 !important;
+            }
+
+            .receipt-head .rh-icon,
+            .receipt-head h2,
+            .receipt-head p { color: #000 !important; }
+
+            .rc-kode { color: #000 !important; }
+            .rc-loket-chip { background: #f0f0f0 !important; color: #000 !important; }
+            .rc-info { background: #f8f8f8 !important; }
+
+            /* Sembunyikan tombol saat cetak */
+            .receipt-foot { display: none !important; }
+
+            /* Garis putus bawah */
+            .receipt-body::after {
+                content: '';
+                display: block;
+                border-bottom: 2px dashed #000;
+                margin-top: 1rem;
+            }
+        }
     </style>
 @endpush
 
@@ -477,13 +546,12 @@
         <div class="rs-card">
             <div class="rs-emblem"><i class="bi bi-hospital-fill"></i></div>
             <div class="rs-info">
-                <h1>Rumah Sakit Sehat </h1>
+                <h1>{{ config('hospital.name') }}</h1>
                 <p>Melayani dengan sepenuh hati untuk kesehatan Anda</p>
                 <div class="rs-meta">
-                    <span class="rs-chip"><i class="bi bi-geo-alt-fill"></i> Jl. Kesehatan No. 1, Surabaya, Jawa Timur
-                        60001</span>
-                    <span class="rs-chip"><i class="bi bi-telephone-fill"></i> (031) 1234-5678</span>
-                    <span class="rs-chip"><i class="bi bi-clock-fill"></i> 07:00 – 21:00 WIB</span>
+                    <span class="rs-chip"><i class="bi bi-geo-alt-fill"></i> {{ config('hospital.address') }}</span>
+                    <span class="rs-chip"><i class="bi bi-telephone-fill"></i> {{ config('hospital.phone') }}</span>
+                    <span class="rs-chip"><i class="bi bi-clock-fill"></i> {{ config('hospital.hours') }}</span>
                 </div>
             </div>
         </div>
@@ -553,9 +621,9 @@
         <div class="receipt" id="receiptBox">
             <div class="receipt-head">
                 <div class="rh-icon"><i class="bi bi-hospital-fill"></i></div>
-                <h2>RUMAH SAKIT SEHAT</h2>
-                <p>Jl. Kesehatan No. 1, Surabaya, Jawa Timur 60001</p>
-                <p>Telp: (031) 1234-5678</p>
+                <h2>{{ config('hospital.name_full') }}</h2>
+                <p>{{ config('hospital.address') }}</p>
+                <p>Telp: {{ config('hospital.phone') }}</p>
             </div>
 
             <div class="receipt-dash"></div>
@@ -591,6 +659,9 @@
 
             <div class="receipt-foot">
                 <div class="rc-time" id="rcTime">—</div>
+                <button class="btn-receipt-print" onclick="cetakTiket()">
+                    <i class="bi bi-printer-fill"></i> Cetak Tiket
+                </button>
                 <button class="btn-receipt-close" onclick="closeReceipt()">
                     <i class="bi bi-check-lg"></i> Terima Kasih, Kembali ke Menu
                 </button>
@@ -601,25 +672,32 @@
 
 @push('scripts')
     <script>
+        // Cooldown per loket: simpan timestamp terakhir ambil nomor
+        const lastTaken = {};
+
         async function ambilAntrian(loketId) {
+            // Guard: cegah klik ganda dalam 3 detik dari loket yang sama
+            const now = Date.now();
+            if (lastTaken[loketId] && (now - lastTaken[loketId]) < 3000) {
+                toast('Harap tunggu sebentar sebelum mengambil nomor lagi.', 'warn');
+                return;
+            }
+
             document.getElementById('loadingOverlay').classList.add('show');
             try {
-                const {
-                    ok,
-                    data
-                } = await api('/kiosk/ambil', 'POST', {
-                    loket_id: loketId
-                });
+                const { ok, data } = await api('/kiosk/ambil', 'POST', { loket_id: loketId });
+
                 if (ok && data.success) {
+                    lastTaken[loketId] = Date.now();
                     showReceipt(data.data);
-                    // update waiting count
                     const newWait = parseInt(document.getElementById(`wait-count-${loketId}`).textContent) + 1;
                     document.getElementById(`wait-count-${loketId}`).textContent = newWait;
                 } else {
-                    toast(data.message || 'Gagal mengambil antrian.', 'error');
+                    // Pesan dari server (termasuk 429 dengan pesan Indonesia)
+                    toast(data?.message || 'Gagal mengambil antrian.', 'error');
                 }
             } catch (e) {
-                toast('Kesalahan koneksi. Coba lagi.', 'error');
+                toast('Kesalahan koneksi. Silakan coba lagi.', 'error');
             } finally {
                 document.getElementById('loadingOverlay').classList.remove('show');
             }
@@ -639,6 +717,10 @@
             document.getElementById('rcLoketName').textContent = d.loket_info.label;
             document.getElementById('rcTime').textContent = 'Dicetak: ' + d.created_at;
             document.getElementById('receiptOverlay').classList.add('show');
+        }
+
+        function cetakTiket() {
+            window.print();
         }
 
         function closeReceipt(e) {

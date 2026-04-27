@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ActivityLog;
 use App\Models\Queue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -55,6 +56,7 @@ class QueueService
         ]);
 
         $this->touchUpdateToken();
+        ActivityLog::record($loketId, 'panggil', $next->kode_antrian);
 
         return $this->success($next->fresh(), "Memanggil {$next->kode_antrian}");
     }
@@ -75,6 +77,7 @@ class QueueService
         ]);
 
         $this->touchUpdateToken();
+        ActivityLog::record($loketId, 'panggil_ulang', $active->kode_antrian);
 
         return $this->success($active->fresh(), "Memanggil ulang {$active->kode_antrian}");
     }
@@ -93,6 +96,7 @@ class QueueService
 
         $active->update(['status' => 'paused']);
         $this->touchUpdateToken();
+        ActivityLog::record($loketId, 'pause', $active->kode_antrian);
 
         return $this->success($active->fresh(), "{$active->kode_antrian} ditunda.");
     }
@@ -120,6 +124,7 @@ class QueueService
 
         $refreshed = $active->fresh();
         $this->touchUpdateToken();
+        ActivityLog::record($loketId, 'selesai', $refreshed->kode_antrian, "Durasi: {$refreshed->duration_human}");
 
         return $this->success($refreshed, "{$refreshed->kode_antrian} selesai. Durasi: {$refreshed->duration_human}");
     }
@@ -134,14 +139,38 @@ class QueueService
             return $this->error('Tidak ada antrian aktif untuk dibatalkan.');
         }
 
+        $kode = $active->kode_antrian;
         $active->update([
             'status'  => 'cancelled',
             'done_at' => now(),
         ]);
 
         $this->touchUpdateToken();
+        ActivityLog::record($loketId, 'batal', $kode);
 
-        return $this->success(null, "{$active->kode_antrian} dibatalkan.");
+        return $this->success(null, "{$kode} dibatalkan.");
+    }
+
+    // ── Loket: tidak hadir (no-show) ─────────────────────────────────────────
+
+    public function tidakHadir(int $loketId): array
+    {
+        $active = $this->getActive($loketId);
+
+        if (! $active) {
+            return $this->error('Tidak ada antrian aktif.');
+        }
+
+        $kode = $active->kode_antrian;
+        $active->update([
+            'status'  => 'no_show',
+            'done_at' => now(),
+        ]);
+
+        $this->touchUpdateToken();
+        ActivityLog::record($loketId, 'tidak_hadir', $kode, 'Pasien tidak hadir setelah dipanggil');
+
+        return $this->success(null, "{$kode} ditandai tidak hadir.");
     }
 
     // ── State queries ─────────────────────────────────────────────────────────
@@ -180,16 +209,34 @@ class QueueService
 
     public function getDisplayState(): array
     {
-        $lokets = [];
+        $loketIds = array_keys(Queue::LOKETS);
 
-        foreach ([1, 2, 3] as $id) {
-            $active = $this->getActive($id);
+        // 1 query: hitung waiting & done per loket sekaligus
+        $counts = Queue::today()
+            ->whereIn('loket_id', $loketIds)
+            ->whereIn('status', ['waiting', 'done'])
+            ->selectRaw('loket_id, status, COUNT(*) as cnt')
+            ->groupBy('loket_id', 'status')
+            ->get()
+            ->groupBy('loket_id');
+
+        // 1 query: semua antrian aktif dari seluruh loket
+        $actives = Queue::today()
+            ->whereIn('loket_id', $loketIds)
+            ->whereIn('status', Queue::ACTIVE_STATUSES)
+            ->orderBy('called_at')
+            ->get()
+            ->keyBy('loket_id');
+
+        $lokets = [];
+        foreach ($loketIds as $id) {
+            $byStat = $counts->get($id, collect())->keyBy('status');
             $lokets[$id] = [
-                'loket_id'    => $id,
-                'loket_info'  => Queue::loketInfo($id),
-                'active'      => $active?->toApiArray(),
-                'waiting'     => Queue::today()->loket($id)->waiting()->count(),
-                'done_today'  => Queue::today()->loket($id)->done()->count(),
+                'loket_id'   => $id,
+                'loket_info' => Queue::loketInfo($id),
+                'active'     => $actives->get($id)?->toApiArray(),
+                'waiting'    => (int) ($byStat->get('waiting')?->cnt ?? 0),
+                'done_today' => (int) ($byStat->get('done')?->cnt    ?? 0),
             ];
         }
 
@@ -203,18 +250,29 @@ class QueueService
 
     public function getStats(int $loketId): array
     {
-        $doneQuery = Queue::today()->loket($loketId)->done();
-        $avgRaw    = (int) ($doneQuery->avg('service_duration') ?? 0);
+        // 1 query: aggregate semua status sekaligus
+        $rows = Queue::today()
+            ->loket($loketId)
+            ->selectRaw('status, COUNT(*) as cnt, AVG(service_duration) as avg_dur')
+            ->groupBy('status')
+            ->get()
+            ->keyBy('status');
+
+        $done     = (int) ($rows->get('done')?->cnt      ?? 0);
+        $cancelled = (int) ($rows->get('cancelled')?->cnt ?? 0);
+        $noShow   = (int) ($rows->get('no_show')?->cnt   ?? 0);
+        $avgRaw   = (int) ($rows->get('done')?->avg_dur  ?? 0);
         $m = intdiv($avgRaw, 60);
         $s = $avgRaw % 60;
 
         return [
-            'total_waiting'      => Queue::today()->loket($loketId)->waiting()->count(),
-            'total_done'         => Queue::today()->loket($loketId)->done()->count(),
-            'total_cancelled'    => Queue::today()->loket($loketId)->where('status', 'cancelled')->count(),
+            'total_waiting'      => (int) ($rows->get('waiting')?->cnt ?? 0),
+            'total_done'         => $done,
+            'total_cancelled'    => $cancelled,
+            'total_no_show'      => $noShow,
             'avg_duration_raw'   => $avgRaw,
-            'avg_duration_human' => $avgRaw > 0 ? ($m > 0 ? "{$m}m {$s}d" : "{$s}d") : '-',
-            'total_served_today' => Queue::today()->loket($loketId)->whereIn('status', ['done', 'cancelled'])->count(),
+            'avg_duration_human' => $avgRaw > 0 ? ($m > 0 ? "{$m} mnt {$s} dtk" : "{$s} dtk") : '-',
+            'total_served_today' => $done + $cancelled + $noShow,
         ];
     }
 
@@ -222,10 +280,21 @@ class QueueService
 
     public function getKioskStats(): array
     {
+        $loketIds = array_keys(Queue::LOKETS);
+
+        // 1 query: hitung waiting per loket sekaligus
+        $waitingCounts = Queue::today()
+            ->whereIn('loket_id', $loketIds)
+            ->waiting()
+            ->selectRaw('loket_id, COUNT(*) as cnt')
+            ->groupBy('loket_id')
+            ->get()
+            ->keyBy('loket_id');
+
         $stats = [];
-        foreach ([1, 2, 3] as $id) {
+        foreach ($loketIds as $id) {
             $stats[$id] = [
-                'waiting'    => Queue::today()->loket($id)->waiting()->count(),
+                'waiting'    => (int) ($waitingCounts->get($id)?->cnt ?? 0),
                 'loket_info' => Queue::loketInfo($id),
             ];
         }

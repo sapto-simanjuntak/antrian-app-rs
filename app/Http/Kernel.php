@@ -68,5 +68,6 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
 
         'loket.access' => \App\Http\Middleware\CheckLoketAccess::class,
+        'admin'        => \App\Http\Middleware\CheckAdmin::class,
     ];
 }

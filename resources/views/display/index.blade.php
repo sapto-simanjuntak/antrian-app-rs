@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Display Antrian — RS Sehat Sentosa</title>
+    <title>Display Antrian — {{ config('hospital.name') }}</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
@@ -424,6 +424,107 @@
             animation: numFlash .42s ease 4;
         }
 
+        /* Audio unlock overlay */
+        .audio-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(21, 101, 192, .97);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.8rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .audio-overlay .ao-icon {
+            width: 90px;
+            height: 90px;
+            background: rgba(255, 255, 255, .15);
+            border: 2px solid rgba(255, 255, 255, .3);
+            border-radius: 22px;
+            display: grid;
+            place-items: center;
+            font-size: 2.6rem;
+            color: #fff;
+            animation: pulse-ao 2s ease infinite;
+        }
+
+        @keyframes pulse-ao {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.08); opacity: .85; }
+        }
+
+        .audio-overlay h2 {
+            font-size: 2rem;
+            font-weight: 900;
+            color: #fff;
+            text-align: center;
+        }
+
+        .audio-overlay p {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, .72);
+            text-align: center;
+        }
+
+        .audio-overlay .tap-btn {
+            background: #fff;
+            color: var(--b1);
+            border: none;
+            border-radius: 999px;
+            padding: 1rem 3.2rem;
+            font-family: var(--font);
+            font-size: 1.1rem;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, .28);
+            transition: transform .15s;
+        }
+
+        .audio-overlay .tap-btn:hover {
+            transform: scale(1.04);
+        }
+
+        /* Mute toggle */
+        .mute-btn {
+            position: fixed;
+            bottom: 64px;
+            right: 1.4rem;
+            z-index: 98;
+            background: rgba(255, 255, 255, .92);
+            border: 2px solid var(--border);
+            border-radius: 999px;
+            padding: 7px 18px;
+            font-family: var(--font);
+            font-size: .78rem;
+            font-weight: 800;
+            color: var(--text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            box-shadow: 0 2px 10px rgba(21, 101, 192, .12);
+            transition: all .2s;
+        }
+
+        .mute-btn:hover {
+            background: var(--b1);
+            color: #fff;
+            border-color: var(--b1);
+        }
+
+        .mute-btn.muted {
+            background: #fff3f5;
+            border-color: #FF3B5C;
+            color: #FF3B5C;
+        }
+
         /* TTS indicator */
         .tts-indicator {
             position: fixed;
@@ -564,14 +665,31 @@
 </head>
 
 <body>
+
+    {{-- Audio unlock overlay — wajib klik sekali agar browser izinkan Web Speech API --}}
+    <div class="audio-overlay" id="audioOverlay" onclick="unlockAudio()">
+        <div class="ao-icon"><i class="bi bi-volume-up-fill"></i></div>
+        <h2>Sistem Antrian Digital</h2>
+        <p>Sentuh layar untuk mengaktifkan pengumuman suara otomatis</p>
+        <button class="tap-btn" type="button">
+            <i class="bi bi-hand-index-fill"></i>&nbsp; Tap untuk Mulai
+        </button>
+    </div>
+
+    {{-- Mute toggle --}}
+    <button class="mute-btn" id="muteBtn" type="button" onclick="toggleMute()">
+        <i class="bi bi-volume-up-fill" id="muteIcon"></i>
+        <span id="muteTxt">Suara ON</span>
+    </button>
+
     <div class="dsp-root">
 
         {{-- Header --}}
         <header class="dsp-head">
             <div class="dsp-logo"><i class="bi bi-hospital-fill"></i></div>
             <div class="dsp-brand">
-                <h1>RUMAH SAKIT SEHAT SENTOSA</h1>
-                <p>Jl. Kesehatan No. 1, Surabaya, Jawa Timur &nbsp;|&nbsp; Sistem Antrian Digital</p>
+                <h1>{{ config('hospital.name_full') }}</h1>
+                <p>{{ config('hospital.address') }} &nbsp;|&nbsp; Sistem Antrian Digital</p>
             </div>
             <div class="dsp-clock">
                 <div class="dsp-time" id="dClock">--:--:--</div>
@@ -622,11 +740,11 @@
             <div class="ticker-label">Info</div>
             <div class="ticker-track">
                 <div class="ticker-inner">
-                    <span>Selamat datang di RS Sehat Sentosa — Melayani dengan Hati dan Profesional</span>
+                    <span>Selamat datang di {{ config('hospital.name') }} — Melayani dengan Hati dan Profesional</span>
                     <span>Harap perhatikan layar ini dan siapkan kartu identitas serta berkas yang diperlukan</span>
                     <span>Antrian yang tidak hadir setelah dipanggil 3 kali akan dibatalkan secara otomatis</span>
-                    <span>Jam layanan: Senin – Sabtu 07:00 – 21:00 WIB | Minggu 08:00 – 14:00 WIB</span>
-                    <span>Hotline: (031) 1234-5678 | WhatsApp: 0812-3456-7890</span>
+                    <span>Jam layanan: {{ config('hospital.hours') }}</span>
+                    <span>Hotline: {{ config('hospital.phone') }} | WhatsApp: {{ config('hospital.whatsapp') }}</span>
                 </div>
             </div>
         </footer>
@@ -643,17 +761,54 @@
             setTimeout(tick, 1000);
         })();
 
+        /* ── Audio unlock & mute ──────────────────────────────────────────────────── */
+        let audioUnlocked = false;
+        let audioMuted = false;
+
+        function unlockAudio() {
+            if (audioUnlocked) return;
+            audioUnlocked = true;
+            document.getElementById('audioOverlay').style.display = 'none';
+            // Ucapkan utterance kosong untuk benar-benar membuka kunci autoplay browser
+            if (typeof speechSynthesis !== 'undefined') {
+                const u = new SpeechSynthesisUtterance(' ');
+                u.volume = 0;
+                speechSynthesis.speak(u);
+            }
+        }
+
+        function toggleMute() {
+            audioMuted = !audioMuted;
+            const btn  = document.getElementById('muteBtn');
+            const icon = document.getElementById('muteIcon');
+            const txt  = document.getElementById('muteTxt');
+            if (audioMuted) {
+                btn.classList.add('muted');
+                icon.className = 'bi bi-volume-mute-fill';
+                txt.textContent = 'Suara OFF';
+                speechSynthesis.cancel();
+            } else {
+                btn.classList.remove('muted');
+                icon.className = 'bi bi-volume-up-fill';
+                txt.textContent = 'Suara ON';
+            }
+        }
+
         /* ── TTS Engine ──────────────────────────────────────────────────────────────
            Web Speech API — suara keluar dari speaker Display TV.
            Queue dipakai agar panggilan tidak tumpang tindih.
+           Memerlukan unlockAudio() dipanggil lebih dulu (autoplay policy browser).
         */
+        const DIGIT_ID = { '0':'nol','1':'satu','2':'dua','3':'tiga','4':'empat',
+                           '5':'lima','6':'enam','7':'tujuh','8':'delapan','9':'sembilan' };
+
         const tts = {
             queue: [],
             busy: false,
             enabled: typeof speechSynthesis !== 'undefined',
 
             speak(text) {
-                if (!this.enabled) return;
+                if (!this.enabled || !audioUnlocked || audioMuted) return;
                 this.queue.push(text);
                 if (!this.busy) this._next();
             },
@@ -668,10 +823,10 @@
                 this._showIndicator();
 
                 const utt = new SpeechSynthesisUtterance(this.queue.shift());
-                utt.lang = 'id-ID';
-                utt.rate = 0.88;
-                utt.pitch = 1.0;
-                utt.volume = 1.0;
+                utt.lang    = 'id-ID';
+                utt.rate    = 0.88;
+                utt.pitch   = 1.0;
+                utt.volume  = 1.0;
 
                 utt.onend = utt.onerror = () => {
                     setTimeout(() => this._next(), 600);
@@ -688,12 +843,12 @@
             },
 
             /**
-             * Digit dibaca satu per satu agar jelas.
+             * Digit dibaca dalam bahasa Indonesia satu per satu agar jelas.
              * "B001" → "Nomor antrian B, nol, nol, satu. Silakan menuju Loket satu, BPJS Kesehatan."
              */
             buildText(kode, loketId, loketLabel) {
-                const prefix = kode.charAt(0);
-                const digits = kode.slice(1).split('').join(', ');
+                const prefix   = kode.charAt(0);
+                const digits   = kode.slice(1).split('').map(d => DIGIT_ID[d] ?? d).join(', ');
                 const loketNum = ['satu', 'dua', 'tiga'][loketId - 1] ?? loketId;
                 return `Nomor antrian ${prefix}, ${digits}. Silakan menuju Loket ${loketNum}, ${loketLabel}.`;
             },

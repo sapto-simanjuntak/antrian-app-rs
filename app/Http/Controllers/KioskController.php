@@ -27,11 +27,14 @@ class KioskController extends Controller
         $request->validate(['loket_id' => 'required|integer|in:1,2,3']);
 
         try {
-            $queue = $this->queueService->ambilAntrian((int) $request->loket_id);
+            $loketId = (int) $request->loket_id;
+            $queue   = $this->queueService->ambilAntrian($loketId);
+
+            $waitingCount = \App\Models\Queue::today()->loket($loketId)->waiting()->count();
 
             return response()->json([
                 'success' => true,
-                'data'    => $queue->toApiArray(),
+                'data'    => array_merge($queue->toApiArray(), ['waiting_count' => $waitingCount]),
             ]);
         } catch (\Exception $e) {
             return response()->json([
